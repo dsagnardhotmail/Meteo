@@ -25,7 +25,6 @@
   body{padding-bottom:40px;}
   .wrap{max-width:480px; margin:0 auto; padding:0 16px;}
 
-  /* ---------- header / search ---------- */
   header{padding:18px 16px 10px;}
   .eyebrow{
     font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase;
@@ -50,7 +49,6 @@
   .suggestions div:last-child{border-bottom:none;}
   .suggestions div:active{background:var(--paper-2);}
 
-  /* ---------- hero / consensus ---------- */
   .hero{padding:14px 16px 6px;}
   .place{font-size:15px; font-weight:600; letter-spacing:-.01em;}
   .placeMeta{font-family:var(--mono); font-size:11.5px; color:#5b6b78; margin-top:2px;}
@@ -61,7 +59,6 @@
   .heroDesc{font-size:14px; color:#3a4a56; margin-top:8px;}
   .rangeLine{font-family:var(--mono); font-size:13px; color:#3a4a56; margin-top:2px;}
 
-  /* ---------- accord gauge (signature) ---------- */
   .accord{margin-top:18px; border:1px solid var(--line); border-radius:14px; background:#fff; padding:12px 14px;}
   .accordTop{display:flex; justify-content:space-between; align-items:baseline;}
   .accordLabel{font-family:var(--mono); font-size:10.5px; letter-spacing:.07em; text-transform:uppercase; color:#5b6b78;}
@@ -73,7 +70,6 @@
   .track .mid{position:absolute; top:-4px; bottom:-4px; width:2px; background:var(--steel);}
   .accordHelp{font-size:11.5px; color:#5b6b78; margin-top:8px;}
 
-  /* ---------- days strip ---------- */
   .daysTitle{
     font-family:var(--mono); font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:#5b6b78;
     padding:22px 16px 8px;
@@ -133,7 +129,7 @@
 </div>
 
 <script>
-const MODELS =[
+const MODELS = [
   { id:"gfs_seamless",        name:"GFS (NOAA · USA)",         color:"#3C6E91" },
   { id:"ecmwf_ifs025",        name:"IFS (ECMWF · Europe)",     color:"#D98A2B" },
   { id:"icon_seamless",       name:"ICON (DWD · Allemagne)",   color:"#5B8C5A" },
@@ -144,6 +140,8 @@ const MODELS =[
   { id:"dmi_seamless",        name:"DMI (Danemark)",           color:"#A0522D" },
   { id:"metno_seamless",      name:"MET-Norway (Norvège)",     color:"#5E6BC2" },
 ];
+document.querySelector(".eyebrow").innerHTML =
+  `<span class="dot"></span>Synthèse de ${MODELS.length} modèles météo`;
 
 const DAILY_VARS = ["temperature_2m_max","temperature_2m_min","precipitation_probability_max","weather_code"];
 const $ = (s,el=document)=>el.querySelector(s);
@@ -160,254 +158,4 @@ function weatherIcon(code, size=22, color="#11202E"){
   if([61,63,65,66,67,80,81,82].includes(code)) return wrap(`<path d="M6.5 11h11a3 3 0 0 0 .3-6 4.3 4.3 0 0 0-8.2-1.1A3.4 3.4 0 0 0 6.5 11z"/><path d="M8 15.5l-1.4 3M13 15.5l-1.4 3M18 15.5l-1.4 3"/>`);
   if([71,73,75,77,85,86].includes(code)) return wrap(`<path d="M6.5 11h11a3 3 0 0 0 .3-6 4.3 4.3 0 0 0-8.2-1.1A3.4 3.4 0 0 0 6.5 11z"/><path d="M9 16v4M9 16l-1.5 1M9 16l1.5 1M9 20l-1.5-1M9 20l1.5-1M15 16v4M15 16l-1.5 1M15 16l1.5 1M15 20l-1.5-1M15 20l1.5-1"/>`);
   if([95,96,99].includes(code)) return wrap(`<path d="M6.5 10.5h11a3 3 0 0 0 .3-6 4.3 4.3 0 0 0-8.2-1.1A3.4 3.4 0 0 0 6.5 10.5z"/><path d="M12.5 13l-3 5h3l-1.5 4 4.5-6h-3l2-3z" fill="${c}" stroke="none"/>`);
-  return wrap(`<circle cx="12" cy="12" r="1"/>`);
-}
-function weatherLabel(code){
-  if(code===0) return "Ciel dégagé";
-  if(code===1) return "Peu nuageux";
-  if(code===2) return "Partiellement nuageux";
-  if(code===3) return "Couvert";
-  if([45,48].includes(code)) return "Brouillard";
-  if([51,53,55,56,57].includes(code)) return "Bruine";
-  if([61,63,65,66,67].includes(code)) return "Pluie";
-  if([71,73,75,77].includes(code)) return "Neige";
-  if([80,81,82].includes(code)) return "Averses";
-  if([85,86].includes(code)) return "Averses de neige";
-  if([95,96,99].includes(code)) return "Orage";
-  return "—";
-}
-function mode(arr){
-  const c = {}; let best=arr[0], bestN=0;
-  arr.forEach(v=>{ c[v]=(c[v]||0)+1; if(c[v]>bestN){bestN=c[v]; best=v;} });
-  return best;
-}
-function avg(arr){ const v = arr.filter(x=>x!=null && !isNaN(x)); return v.length? v.reduce((a,b)=>a+b,0)/v.length : null; }
-function round1(n){ return n==null? null : Math.round(n*10)/10; }
-
-async function fetchForecast(lat, lon){
-  const modelIds = MODELS.map(m=>m.id).join(",");
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}`+
-    `&daily=${DAILY_VARS.join(",")}&models=${modelIds}&forecast_days=7&timezone=auto`;
-  const res = await fetch(url);
-  const json = await res.json();
-  if(!res.ok || json.error){ throw new Error(json.reason || "forecast_failed"); }
-  return json;
-}
-
-function pickKey(daily, varName, modelId){
-  // Open-Meteo suffixes each variable with the model id when several models are requested
-  const direct = `${varName}_${modelId}`;
-  if(daily[direct]) return direct;
-  const found = Object.keys(daily).find(k => k.startsWith(varName) && k.endsWith(modelId));
-  return found || null;
-}
-
-function buildDays(data){
-  const daily = data.daily;
-  const time = daily.time;
-  const days = time.map((t,i)=>{
-    const perModel = MODELS.map(m=>{
-      const kMax = pickKey(daily, "temperature_2m_max", m.id);
-      const kMin = pickKey(daily, "temperature_2m_min", m.id);
-      const kPrecip = pickKey(daily, "precipitation_probability_max", m.id);
-      const kCode = pickKey(daily, "weather_code", m.id);
-      return {
-        model: m,
-        max: kMax ? daily[kMax][i] : null,
-        min: kMin ? daily[kMin][i] : null,
-        precip: kPrecip ? daily[kPrecip][i] : null,
-        code: kCode ? daily[kCode][i] : null,
-      };
-    }).filter(d => d.max != null);
-    const maxes = perModel.map(d=>d.max);
-    const mins = perModel.map(d=>d.min);
-    const precs = perModel.map(d=>d.precip).filter(x=>x!=null);
-    const codes = perModel.map(d=>d.code).filter(x=>x!=null);
-    return {
-      date: new Date(t+"T00:00:00"),
-      perModel,
-      avgMax: avg(maxes), avgMin: avg(mins),
-      spreadMax: maxes.length? Math.max(...maxes)-Math.min(...maxes) : 0,
-      maxes, mins,
-      avgPrecip: precs.length? Math.round(avg(precs)) : null,
-      code: codes.length? mode(codes) : 0,
-    };
-  });
-  return days;
-}
-
-function dayName(d, idx){
-  if(idx===0) return "Aujourd'hui";
-  if(idx===1) return "Demain";
-  return d.toLocaleDateString("fr-FR", { weekday:"short" }).replace(".","");
-}
-
-function renderTrack(el, values, lo, hi, avgVal){
-  el.innerHTML = "";
-  const span = hi-lo || 1;
-  values.forEach(v=>{
-    const pct = Math.max(0, Math.min(100, ((v-lo)/span)*100));
-    const t = document.createElement("div");
-    t.className = "tick";
-    t.style.left = `calc(${pct}% - 1px)`;
-    el.appendChild(t);
-  });
-  const midPct = Math.max(0, Math.min(100, ((avgVal-lo)/span)*100));
-  const mid = document.createElement("div");
-  mid.className = "mid";
-  mid.style.left = `calc(${midPct}% - 1px)`;
-  el.appendChild(mid);
-}
-
-function accordColor(spread){
-  if(spread <= 1.2) return "#3C6E91";
-  if(spread <= 2.8) return "#D98A2B";
-  return "#C24F3B";
-}
-function accordWord(spread){
-  if(spread <= 1.2) return "Accord fort";
-  if(spread <= 2.8) return "Accord modéré";
-  return "Accord faible";
-}
-
-function render(days, place){
-  const app = $("#app");
-  const today = days[0];
-  const lo = Math.min(...today.mins), hi = Math.max(...today.maxes);
-
-  app.innerHTML = `
-    <div class="hero">
-      <div class="place">${place.name}</div>
-      <div class="placeMeta">${place.meta}</div>
-      <div class="heroRow">
-        <div class="heroIcon">${weatherIcon(today.code, 46)}</div>
-        <div>
-          <div class="bigTemp">${Math.round(today.avgMax)}<sup>°C</sup></div>
-        </div>
-      </div>
-      <div class="heroDesc">${weatherLabel(today.code)} — moyenne de ${today.perModel.length} modèles</div>
-      <div class="rangeLine">mín ${round1(today.avgMin)}° · máx ${round1(today.avgMax)}° · précip. ${today.avgPrecip ?? "–"}%</div>
-
-      <div class="accord">
-        <div class="accordTop">
-          <div class="accordLabel">Accord entre modèles · aujourd'hui</div>
-          <div class="accordVal" style="color:${accordColor(today.spreadMax)}">${accordWord(today.spreadMax)} · ±${round1(today.spreadMax/2)}°C</div>
-        </div>
-        <div class="track" id="heroTrack"></div>
-        <div class="accordHelp">Chaque trait = la prévision d'un modèle (GFS, ECMWF, ICON, UKMO, ARPEGE, GEM, JMA). Le trait bleu = la moyenne retenue.</div>
-      </div>
-    </div>
-
-    <div class="daysTitle">7 prochains jours — estimatif moyen</div>
-    <div class="days" id="daysList"></div>
-
-    <footer>
-      Estimatif calculé en moyennant 7 modèles météo internationaux (NOAA GFS, ECMWF IFS, DWD ICON, UK Met Office, Météo-France ARPEGE, ECCC GEM, JMA), via l'API publique <b>Open-Meteo</b>. Aucune clé ni compte requis. Les écarts entre modèles donnent une idée du niveau de confiance.
-    </footer>
-  `;
-
-  renderTrack($("#heroTrack"), today.maxes, lo-1, hi+1, today.avgMax);
-
-  const list = $("#daysList");
-  days.forEach((d,idx)=>{
-    const lo2 = Math.min(...d.mins, ...d.maxes);
-    const hi2 = Math.max(...d.mins, ...d.maxes);
-    const card = document.createElement("div");
-    card.className = "dayCard";
-    card.innerHTML = `
-      <div class="dayTop">
-        <div class="dayName">${dayName(d.date, idx)}</div>
-        <div class="dayIcon">${weatherIcon(d.code, 20)}</div>
-        <div class="dayTemps"><span class="min">${round1(d.avgMin)}°</span> — ${round1(d.avgMax)}°</div>
-        <div class="dayPrecip">${d.avgPrecip!=null? d.avgPrecip+"%":""}</div>
-      </div>
-      <div class="dayTrack"></div>
-      <div class="breakdown">
-        ${d.perModel.map(m=>`
-          <div class="modelRow">
-            <span class="swatch" style="background:${m.model.color}"></span>
-            <span class="name">${m.model.name}</span>
-            <span>${round1(m.min)}° — ${round1(m.max)}°</span>
-            <span style="width:34px;text-align:right;">${m.precip!=null? m.precip+"%":"–"}</span>
-          </div>
-        `).join("")}
-      </div>
-    `;
-    list.appendChild(card);
-    renderTrack($(".dayTrack", card), d.maxes, lo2-1, hi2+1, d.avgMax);
-    card.addEventListener("click", ()=>{
-      $(".breakdown", card).classList.toggle("open");
-    });
-  });
-}
-
-async function loadAndRender(lat, lon, name, meta){
-  $("#app").innerHTML = `<div class="loadingNote">Interrogation de 7 modèles météo…</div>`;
-  try{
-    const data = await fetchForecast(lat, lon);
-    const days = buildDays(data);
-    render(days, { name, meta });
-    localStorage.setItem("consensus_last", JSON.stringify({lat, lon, name, meta}));
-  }catch(e){
-    $("#app").innerHTML = `<div class="err">Impossible de récupérer les prévisions (${e.message}). Vérifiez la connexion et réessayez.</div>`;
-  }
-}
-
-// ---------- search ----------
-let searchTimer = null;
-$("#cityInput").addEventListener("input", (e)=>{
-  const q = e.target.value.trim();
-  clearTimeout(searchTimer);
-  if(q.length < 2){ $("#suggestions").style.display="none"; return; }
-  searchTimer = setTimeout(async ()=>{
-    try{
-      const res = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=5&language=fr&format=json`);
-      const json = await res.json();
-      const box = $("#suggestions");
-      if(!json.results || !json.results.length){ box.style.display="none"; return; }
-      box.innerHTML = json.results.map(r=>{
-        const sub = [r.admin1, r.country].filter(Boolean).join(", ");
-        return `<div data-lat="${r.latitude}" data-lon="${r.longitude}" data-name="${r.name}" data-sub="${sub}">${r.name}${sub? " — "+sub : ""}</div>`;
-      }).join("");
-      box.style.display = "block";
-      $$("div", box).forEach(div=>{
-        div.addEventListener("click", ()=>{
-          box.style.display = "none";
-          $("#cityInput").value = div.dataset.name;
-          loadAndRender(div.dataset.lat, div.dataset.lon, div.dataset.name, div.dataset.sub || "Position recherchée");
-        });
-      });
-    }catch(e){}
-  }, 350);
-});
-
-$("#locBtn").addEventListener("click", ()=>{
-  if(!navigator.geolocation){ alert("La géolocalisation n'est pas disponible sur cet appareil."); return; }
-  $("#app").innerHTML = `<div class="loadingNote">Localisation en cours…</div>`;
-  navigator.geolocation.getCurrentPosition(
-    pos=>{
-      const { latitude, longitude } = pos.coords;
-      $("#cityInput").value = "";
-      loadAndRender(latitude.toFixed(3), longitude.toFixed(3), "Ma position", `${latitude.toFixed(2)}°, ${longitude.toFixed(2)}°`);
-    },
-    ()=>{ $("#app").innerHTML = `<div class="err">Position indisponible. Autorisez l'accès à la localisation ou cherchez une ville.</div>`; },
-    { enableHighAccuracy:false, timeout:8000 }
-  );
-});
-
-// ---------- boot ----------
-(function init(){
-  const last = localStorage.getItem("consensus_last");
-  if(last){
-    const p = JSON.parse(last);
-    $("#cityInput").value = p.name === "Ma position" ? "" : p.name;
-    loadAndRender(p.lat, p.lon, p.name, p.meta);
-  } else {
-    // défaut : Paris
-    loadAndRender(48.8566, 2.3522, "Paris", "Île-de-France, France");
-  }
-})();
-</script>
-</body>
-</html>
-
+  return wrap(`<circle
